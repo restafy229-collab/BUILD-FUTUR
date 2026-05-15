@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { pb, getCurrentUser, type User } from '../lib/pocketbase'
+import { pb, getCurrentUser, isLoggedIn, type User } from '../lib/pocketbase'
 
 interface AuthState {
   user: User | null

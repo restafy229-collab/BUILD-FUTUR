@@ -122,6 +122,31 @@ export default function QuizEditor() {
     }
   }
 
+  const handlePublish = async () => {
+    if (!id || !quiz?.title) return
+    
+    try {
+      // First update quiz as published
+      await updateQuiz(id, { is_published: true })
+      
+      // Create session
+      const code = generateCode()
+      await createS({
+        quiz: id,
+        host: user?.id,
+        code,
+        mode: 'live',
+        status: 'waiting',
+      })
+      
+      setQuiz({ ...quiz, is_published: true })
+      alert('Quiz publié ! Code de session: ' + code)
+    } catch (e) {
+      console.error(e)
+      alert('Erreur lors de la publication')
+    }
+  }
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Chargement...</div>
   }
@@ -139,7 +164,7 @@ export default function QuizEditor() {
               {saving ? 'Sauvegarde...' : 'Sauvegarder'}
             </button>
             {questions.length > 0 && (
-              <button className="btn-primary">
+              <button onClick={handlePublish} className="btn-primary">
                 Publier
               </button>
             )}

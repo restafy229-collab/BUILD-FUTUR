@@ -2,43 +2,39 @@
 
 Le Kahoot de l'Afrique - Plateforme quiz éducatifs interactive 100% gratuite.
 
-## 🚀 Démarrage rapide
+## 🚀 Démarrage Rapide
 
 ```bash
-# Cloner le projet
-cd kiflearn-app
-
-# Installer les dépendances
+# Install dependencies
 npm install
 
-# Configurer PocketBase
-# 1. Créer un compte sur https://pocketbase.cloud
-# 2. Créer les collections (voir ci-dessous)
-# 3. Copier VITE_POCKETBASE_URL dans .env
+# Configure PocketBase
+# 1. Go to https://pocketbase.cloud
+# 2. Create free account → New project
+# 3. Copy URL to .env
 
-# Créer .env
-echo "VITE_POCKETBASE_URL=https://ton-app.pocketbase.cloud" > .env
+# Create .env file
+echo "VITE_POCKETBASE_URL=https://your-app.pocketbase.cloud" > .env
 
-# Lancer en mode développement
+# Start development
 npm run dev
 ```
 
-## 🗄️ Configuration PocketBase
+## 🗄️ Configuration PocketBase (Admin UI)
 
-Créer ces collections dans l'admin UI PocketBase:
+Create these collections in PocketBase admin panel:
 
 ### users
-| Champ | Type | Options |
+| Field | Type | Options |
 |-------|------|---------|
 | email | email | unique, required |
 | username | text | required |
 | role | select | host, participant |
 | avatar | file | |
 | created | datetime | auto |
-| updated | datetime | auto |
 
 ### quizzes
-| Champ | Type | Options |
+| Field | Type | Options |
 |-------|------|---------|
 | title | text | required |
 | description | text | |
@@ -49,7 +45,6 @@ Créer ces collections dans l'admin UI PocketBase:
 | points_correct | number | default: 100 |
 | points_incorrect | number | default: -10 |
 | is_published | bool | default: false |
-| created | datetime | auto |
 
 **API Rules:**
 ```json
@@ -63,7 +58,7 @@ Créer ces collections dans l'admin UI PocketBase:
 ```
 
 ### questions
-| Champ | Type | Options |
+| Field | Type | Options |
 |-------|------|---------|
 | quiz | relation | quizzes, required |
 | type | select | mcq, true_false |
@@ -74,21 +69,9 @@ Créer ces collections dans l'admin UI PocketBase:
 | time_limit | number | default: 20 |
 | points | number | default: 100 |
 | order | number | |
-| created | datetime | auto |
-
-**API Rules:**
-```json
-{
-  "listRule": "quiz.host = @request.auth.id",
-  "viewRule": "quiz.host = @request.auth.id",
-  "updateRule": "quiz.host = @request.auth.id",
-  "deleteRule": "quiz.host = @request.auth.id",
-  "createRule": "@request.auth.id != null"
-}
-```
 
 ### sessions
-| Champ | Type | Options |
+| Field | Type | Options |
 |-------|------|---------|
 | quiz | relation | quizzes, required |
 | host | relation | users, required |
@@ -97,19 +80,16 @@ Créer ces collections dans l'admin UI PocketBase:
 | status | select | waiting, active, ended |
 | current_question | number | |
 | deadline | datetime | |
-| started | datetime | |
-| created | datetime | auto |
 
 ### participants
-| Champ | Type | Options |
+| Field | Type | Options |
 |-------|------|---------|
 | session | relation | sessions, required |
 | user | relation | users, required |
 | score | number | default: 0 |
-| joined | datetime | auto |
 
 ### responses
-| Champ | Type | Options |
+| Field | Type | Options |
 |-------|------|---------|
 | session | relation | sessions, required |
 | participant | relation | users, required |
@@ -118,62 +98,40 @@ Créer ces collections dans l'admin UI PocketBase:
 | response_ms | number | |
 | points | number | |
 | is_correct | bool | |
-| created | datetime | auto |
 
-## 📱 Modes de Quiz
+## 📱 Modes
 
-### Quiz Live
-- Réponses en temps réel
-- Timer par question
-- Classement en direct
-- Bonus vitesse
+- **Live**: Real-time with timer + leaderboard
+- **Async**: Flexible deadline, no live
+- **Hackathon**: Multi-phase competitions by skill
 
-### Mode Async
-- Deadline flexible
-- Navigation libre entre questions
-- Pas de live
+## 🛠️ Stack
 
-### Hackathon
-- Phases multiples
-- Skill tracking
-- Classement par compétence
+- React 18 + TypeScript + Vite
+- TailwindCSS
+- PocketBase (100% free)
 
-## 🛠️ Stack Technique
-
-- **Frontend**: React 18 + TypeScript + Vite + TailwindCSS
-- **Backend**: PocketBase (100% gratuit)
-- **PWA**: Service Worker + Workbox
-- **Auth**: PocketBase Auth
-
-## 📦 Structure du Projet
+## 📁 Structure
 
 ```
 src/
-├── components/     # Composants réutilisables
-├── pages/        # Pages de l'application
-├── hooks/        # Hooks personnalisés
+├── components/    # Reusable components
+├── pages/        # App pages
+├── hooks/        # Custom hooks (realtime)
 ├── lib/          # PocketBase client
 ├── stores/       # Zustand stores
-├── styles/       # CSS global
-└── assets/      # Images, icônes
+└── styles/       # Global CSS
 ```
 
-## 🚀 Déploiement
+## 🚀 Deploy
 
-### Frontend (Gratuit)
 ```bash
-# Cloudflare Pages
+# Build
 npm run build
-#zip dist et uploader sur cloudflare pages
 
-# Ou Vercel
-npx vercel --prod
+# Deploy to Cloudflare Pages or Vercel (free)
 ```
 
-### Backend
-- PocketBase.cloud (gratuit)
-- Ou auto-hébergement
-
-## 📄 Licence
+## 📄 License
 
 MIT © 2026 KifLearn

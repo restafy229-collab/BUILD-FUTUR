@@ -21,7 +21,8 @@ export default function Dashboard() {
         getQuizzes(),
         getSessions(),
       ])
-      setQuizzes(q)
+      // Filter quizzes by current user
+      setQuizzes(q.filter((quiz: Quiz) => quiz.host === user?.id))
       setSessions(s)
     } catch (e) {
       console.error(e)
@@ -93,19 +94,23 @@ export default function Dashboard() {
                     <p className="text-sm text-gray-500 mb-4 line-clamp-2">
                       {quiz.description || 'Aucune description'}
                     </p>
-                    <div className="flex gap-2">
-                      <Link 
-                        to={`/quiz/${quiz.id}/edit`} 
-                        className="text-sm text-kif-orange hover:underline"
-                      >
-                        Modifier
-                      </Link>
-                      <button 
-                        onClick={() => startSession(quiz.id)}
-                        className="text-sm text-kif-blue hover:underline"
-                      >
-                        Lancer
-                      </button>
+                    <div className="flex items-center justify-between">
+                      <div className="flex gap-2">
+                        <Link 
+                          to={`/quiz/${quiz.id}/edit`} 
+                          className="text-sm text-kif-orange hover:underline"
+                        >
+                          Modifier
+                        </Link>
+                        {quiz.is_published && (
+                          <button 
+                            onClick={() => startSession(quiz.id)}
+                            className="text-sm text-kif-blue hover:underline"
+                          >
+                            Lancer
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
