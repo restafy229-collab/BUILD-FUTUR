@@ -1,10 +1,26 @@
 import PocketBase from 'pocketbase'
 
-const PB_URL = import.meta.env.VITE_POCKETBASE_URL || 'https://YOUR_APP.pocketbase.cloud'
+// ===========================================
+// CONFIGURATION & SECURITY
+// ===========================================
 
+// Secure URL from environment (default fallback for dev only)
+const PB_URL = import.meta.env.VITE_POCKETBASE_URL || 'http://127.0.0.1:8090'
+
+// Validate URL format
+if (!PB_URL.startsWith('https://') && !PB_URL.startsWith('http://')) {
+  console.error('Invalid PocketBase URL - must start with http:// or https://')
+}
+
+// Initialize PocketBase
 export const pb = new PocketBase(PB_URL)
 
-export type User = {
+// ===========================================
+// TYPES - Core Domain Models
+// ===========================================
+
+// User type (from users collection)
+export interface User {
   id: string
   email: string
   username: string
@@ -14,7 +30,8 @@ export type User = {
   updated: string
 }
 
-export type Quiz = {
+// Quiz type (from quizzes collection)
+export interface Quiz {
   id: string
   title: string
   description: string
@@ -28,7 +45,8 @@ export type Quiz = {
   created: string
 }
 
-export type Question = {
+// Question type (from questions collection)
+export interface Question {
   id: string
   quiz: string
   type: 'mcq' | 'true_false'
@@ -41,7 +59,8 @@ export type Question = {
   order: number
 }
 
-export type Session = {
+// Session type (from sessions collection)
+export interface Session {
   id: string
   quiz: string
   host: string
@@ -54,7 +73,8 @@ export type Session = {
   created: string
 }
 
-export type Participant = {
+// Participant type (from participants collection)
+export interface Participant {
   id: string
   session: string
   user: string
@@ -62,7 +82,8 @@ export type Participant = {
   joined: string
 }
 
-export type Response = {
+// Response type (from responses collection)
+export interface Response {
   id: string
   session: string
   participant: string
@@ -74,129 +95,263 @@ export type Response = {
   created: string
 }
 
-// Auth helpers
+// ===========================================
+// AUTH HELPERS
+// ===========================================
+
+/**
+ * Login with email and password
+ * Uses PocketBase built-in authWithPassword for security
+ */
 export async function login(email: string, password: string) {
-  return await pb.collection('users').authWithPassword(email, password)
+  // Sanitize inputs
+  const sanitizedEmail = email.trim().toLowerCase()
+  
+  try {
+    const auth = await pb.collection('users').authWithPassword(sanitizedEmail, password)
+    return { user: auth.model, token: auth.token, error: null }
+  } catch (error: any) {
+    console.error('Login error:', error.message)
+    return { user: null, token: null, error: error.message }
+  }
 }
 
+/**
+ * Register new user
+ * Requires: email, password, confirmation, username
+ */
 export async function register(email: string, password: string, username: string) {
-  return await pb.collection('users').create({
-    email,
-    password,
-    passwordConfirm: password,
-    username,
-    role: 'participant',
-  })
+  // Sanitize inputs
+  const sanitizedEmail = email.trim().toLowerCase()
+  const sanitizedUsername = username.trim().replace(/[^a-zA-Z0-9_-]/g, '')
+  
+  try {
+    // Create user
+    const user = await pb.collection('users').create({
+      email: sanitizedEmail,
+      password: password,
+      passwordConfirm: password,
+      username: sanitizedUsername,
+      role: 'participant',
+    })
+    
+    // Auto-login after registration
+    const auth = await pb.collection('users').authWithPassword(sanitizedEmail, password)
+    
+    return { user: auth.model, token: auth.token, error: null }
+  } catch (error: any) {
+    console.error('Register error:', error.message)
+    return { user: null, token: null, error: error.message }
+  }
 }
 
+/**
+ * Logout current user
+ * Clears auth store securely
+ */
 export async function logout() {
-  pb authStore.clear()
+  pb.authStore.clear()
 }
 
-export function getCurrentUser() {
+/**
+ * Get current authenticated user
+ */
+export function getCurrentUser(): User | null {
   return pb.authStore.model as User | null
 }
 
-export function isLoggedIn() {
+/**
+ * Check if user is authenticated
+ */
+export function isLoggedIn(): boolean {
   return pb.authStore.isValid
 }
 
-// Quiz helpers
-export async function getQuizzes() {
+/**
+ * Refresh authentication token
+ * Use to extend session
+ */
+export async function refreshAuth() {
+  if (!pb.authStore.isValid) return false
+  
+  try {
+    await pb.collection('users').authRefresh()
+    return true
+  } catch (error) {
+    pb.authStore.clear()
+    return false
+  }
+}
+
+// ===========================================
+// QUIZ HELPERS
+// ===========================================
+
+/**
+ * Get all quizzes (filtered by visibility or host)
+ */
+export async function getQuizzes(hostId?: string): Promise<Quiz[]> {
+  if (hostId) {
+    // Get only this user's quizzes
+    return await pb.collection('quizzes').getFullList<Quiz>({
+      filter: `host="${hostId}"`,
+      sort: '-created',
+    })
+  }
+  // Get public quizzes + user's own
   return await pb.collection('quizzes').getFullList<Quiz>({
     sort: '-created',
   })
 }
 
-export async function getQuiz(id: string) {
-  return await pb.collection('quizzes').getOne<Quiz>(id)
+/**
+ * Get single quiz by ID
+ */
+export async function getQuiz(id: string): Promise<Quiz | null> {
+  try {
+    return await pb.collection('quizzes').getOne<Quiz>(id)
+  } catch {
+    return null
+  }
 }
 
-export async function createQuiz(data: Partial<Quiz>) {
-  return await pb.collection('quizzes').create(data)
+/**
+ * Create new quiz
+ */
+export async function createQuiz(data: Partial<Quiz> & { host: string }): Promise<Quiz> {
+  return await pb.collection('quizzes').create({
+    title: data.title?.slice(0, 200) || 'Untitled Quiz',
+    description: data.description?.slice(0, 1000) || '',
+    host: data.host,
+    visibility: data.visibility || 'private',
+    language: data.language || 'fr',
+    time_per_question: data.time_per_question || 20,
+    points_correct: data.points_correct || 100,
+    points_incorrect: data.points_incorrect || -10,
+    is_published: false,
+  })
 }
 
-export async function updateQuiz(id: string, data: Partial<Quiz>) {
+/**
+ * Update quiz
+ */
+export async function updateQuiz(id: string, data: Partial<Quiz>): Promise<Quiz> {
   return await pb.collection('quizzes').update(id, data)
 }
 
-export async function deleteQuiz(id: string) {
+/**
+ * Delete quiz (only by host)
+ */
+export async function deleteQuiz(id: string): Promise<void> {
   return await pb.collection('quizzes').delete(id)
 }
 
-// Question helpers
-export async function getQuestions(quizId: string) {
+// ===========================================
+// QUESTION HELPERS
+// ===========================================
+
+/**
+ * Get all questions for a quiz
+ */
+export async function getQuestions(quizId: string): Promise<Question[]> {
   return await pb.collection('questions').getFullList<Question>({
     filter: `quiz="${quizId}"`,
     sort: 'order',
   })
 }
 
-export async function createQuestion(data: Partial<Question>) {
-  return await pb.collection('questions').create(data)
+/**
+ * Create question
+ */
+export async function createQuestion(data: Partial<Question> & { quiz: string }): Promise<Question> {
+  return await pb.collection('questions').create({
+    quiz: data.quiz,
+    type: data.type || 'mcq',
+    text: data.text?.slice(0, 1000) || '',
+    choices: data.choices || ['A', 'B', 'C', 'D'],
+    correct_index: data.correct_index ?? 0,
+    explanation: data.explanation?.slice(0, 500) || '',
+    time_limit: data.time_limit || 20,
+    points: data.points || 100,
+    order: data.order || 0,
+  })
 }
 
-export async function updateQuestion(id: string, data: Partial<Question>) {
+/**
+ * Update question
+ */
+export async function updateQuestion(id: string, data: Partial<Question>): Promise<Question> {
   return await pb.collection('questions').update(id, data)
 }
 
-export async function deleteQuestion(id: string) {
+/**
+ * Delete question
+ */
+export async function deleteQuestion(id: string): Promise<void> {
   return await pb.collection('questions').delete(id)
 }
 
-// Session helpers
-export async function getSessions() {
+// ===========================================
+// SESSION HELPERS
+// ===========================================
+
+/**
+ * Get all sessions
+ */
+export async function getSessions(): Promise<Session[]> {
   return await pb.collection('sessions').getFullList<Session>({
     sort: '-created',
   })
 }
 
-export async function createSession(data: Partial<Session>) {
-  return await pb.collection('sessions').create(data)
+/**
+ * Get single session
+ */
+export async function getSession(id: string): Promise<Session | null> {
+  try {
+    return await pb.collection('sessions').getOne<Session>(id)
+  } catch {
+    return null
+  }
 }
 
-export async function updateSession(id: string, data: Partial<Session>) {
+/**
+ * Create new session
+ */
+export async function createSession(data: Partial<Session> & { quiz: string; host: string; code: string }): Promise<Session> {
+  return await pb.collection('sessions').create({
+    quiz: data.quiz,
+    host: data.host,
+    code: data.code.toUpperCase(),
+    mode: data.mode || 'live',
+    status: 'waiting',
+    current_question: 0,
+  })
+}
+
+/**
+ * Update session status
+ */
+export async function updateSession(id: string, data: Partial<Session>): Promise<Session> {
   return await pb.collection('sessions').update(id, data)
 }
 
-export async function joinSession(code: string) {
+/**
+ * Join session by code
+ */
+export async function joinSession(code: string): Promise<Session | null> {
+  const sanitizedCode = code.toUpperCase().trim()
+  
   const sessions = await pb.collection('sessions').getFullList<Session>({
-    filter: `code="${code}" && status != "ended"`,
+    filter: `code="${sanitizedCode}" && status != "ended"`,
   })
+  
   return sessions[0] || null
 }
 
-export async function getSessionParticipants(sessionId: string) {
-  return await pb.collection('participants').getFullList<Participant>({
-    filter: `session="${sessionId}"`,
-    sort: '-score',
-  })
-}
-
-export async function joinAsParticipant(sessionId: string, userId: string) {
-  return await pb.collection('participants').create({
-    session: sessionId,
-    user: userId,
-    score: 0,
-  })
-}
-
-export async function updateParticipantScore(id: string, score: number) {
-  return await pb.collection('participants').update(id, { score })
-}
-
-// Response helpers
-export async function submitResponse(data: Partial<Response>) {
-  return await pb.collection('responses').create(data)
-}
-
-export async function getSessionResponses(sessionId: string) {
-  return await pb.collection('responses').getFullList<Response>({
-    filter: `session="${sessionId}"`,
-  })
-}
-
-// Generate unique session code
+/**
+ * Generate unique session code (KIF + 3 random chars)
+ */
 export function generateCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
   let code = 'KIF'
@@ -206,11 +361,134 @@ export function generateCode(): string {
   return code
 }
 
-// Realtime subscription
-export function subscribe(collection: string, callback: (data: any) => void) {
-  return pb.collection(collection).subscribe('*', callback)
+// ===========================================
+// PARTICIPANT HELPERS
+// ===========================================
+
+/**
+ * Get participants for a session
+ */
+export async function getSessionParticipants(sessionId: string): Promise<Participant[]> {
+  return await pb.collection('participants').getFullList<Participant>({
+    filter: `session="${sessionId}"`,
+    sort: '-score',
+  })
 }
 
-export function unsubscribe() {
+/**
+ * Join session as participant
+ */
+export async function joinAsParticipant(sessionId: string, userId: string): Promise<Participant> {
+  // Check if already joined
+  const existing = await pb.collection('participants').getFullList({
+    filter: `session="${sessionId}" && user="${userId}"`,
+  })
+  
+  if (existing.length > 0) {
+    return existing[0] as Participant
+  }
+  
+  // Create new participant
+  return await pb.collection('participants').create({
+    session: sessionId,
+    user: userId,
+    score: 0,
+  })
+}
+
+/**
+ * Update participant score
+ */
+export async function updateParticipantScore(id: string, score: number): Promise<Participant> {
+  return await pb.collection('participants').update(id, { score })
+}
+
+// ===========================================
+// RESPONSE HELPERS
+// ===========================================
+
+/**
+ * Submit answer response
+ */
+export async function submitResponse(data: {
+  session: string
+  participant: string
+  question: string
+  answer_index: number
+  response_ms: number
+  points: number
+  is_correct: boolean
+}): Promise<Response> {
+  return await pb.collection('responses').create(data)
+}
+
+/**
+ * Get responses for a session
+ */
+export async function getSessionResponses(sessionId: string): Promise<Response[]> {
+  return await pb.collection('responses').getFullList<Response>({
+    filter: `session="${sessionId}"`,
+  })
+}
+
+// ===========================================
+// REALTIME HELPERS
+// ===========================================
+
+/**
+ * Subscribe to collection changes
+ * Returns unsubscribe function
+ */
+export function subscribe(
+  collection: string, 
+  callback: (action: string, record: any) => void
+): () => void {
+  pb.collection(collection).subscribe('*', ({ action, record }) => {
+    callback(action, record)
+  })
+  
+  // Return unsubscribe function
+  return () => {
+    pb.collection(collection).unsubscribe()
+  }
+}
+
+/**
+ * Unsubscribe from all collections
+ */
+export function unsubscribeAll() {
   pb.collection('sessions').unsubscribe()
+  pb.collection('participants').unsubscribe()
+  pb.collection('responses').unsubscribe()
+}
+
+// ===========================================
+// SECURITY HELPERS
+// ===========================================
+
+/**
+ * Sanitize string input (XSS prevention)
+ */
+export function sanitizeInput(input: string): string {
+  return input
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+    .replace(/\//g, '&#x2F;')
+}
+
+/**
+ * Validate session code format
+ */
+export function validateCode(code: string): boolean {
+  return /^[A-Z0-9]{3,10}$/.test(code)
+}
+
+/**
+ * Check if user owns quiz
+ */
+export async function isQuizHost(quizId: string, userId: string): Promise<boolean> {
+  const quiz = await getQuiz(quizId)
+  return quiz?.host === userId
 }
