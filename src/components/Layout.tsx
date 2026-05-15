@@ -41,9 +41,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               Accueil
             </Link>
             {isAuthenticated && (
-              <Link to="/dashboard" className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-50 transition-colors">
-                Dashboard
-              </Link>
+              <>
+                <Link to="/dashboard" className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-50 transition-colors">
+                  Dashboard
+                </Link>
+                <Link to="/join" className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-50 transition-colors">
+                  Rejoindre
+                </Link>
+              </>
             )}
           </nav>
           
@@ -55,7 +60,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   <span className="w-7 h-7 bg-gradient-to-br from-kif-orange to-orange-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
                     {user?.username?.charAt(0).toUpperCase()}
                   </span>
-                  <span className="text-sm font-medium">{user?.username}</span>
+                  <Link to="/profile" className="text-sm font-medium">{user?.username}</Link>
                 </div>
                 <button 
                   onClick={handleLogout} 
@@ -96,14 +101,30 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               >
                 Accueil
               </Link>
+              <Link 
+                to="/join" 
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-600"
+              >
+                Rejoindre
+              </Link>
               {isAuthenticated && (
-                <Link 
-                  to="/dashboard" 
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-600"
-                >
-                  Dashboard
-                </Link>
+                <>
+                  <Link 
+                    to="/dashboard" 
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-600"
+                  >
+                    Dashboard
+                  </Link>
+                  <Link 
+                    to="/profile" 
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-600"
+                  >
+                    Profil
+                  </Link>
+                </>
               )}
               {isAuthenticated ? (
                 <button 

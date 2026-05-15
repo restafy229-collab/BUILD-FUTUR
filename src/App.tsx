@@ -6,8 +6,11 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import QuizEditor from './pages/QuizEditor'
+import QuizPlay from './pages/QuizPlay'
 import SessionLive from './pages/SessionLive'
 import JoinSession from './pages/JoinSession'
+import Profile from './pages/Profile'
+import Admin from './pages/Admin'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore()
@@ -22,10 +25,23 @@ export default function App() {
         <Route path="login" element={<Login />} />
         <Route path="register" element={<Register />} />
         <Route path="join" element={<JoinSession />} />
+        <Route path="play/:id" element={<QuizPlay />} />
         
         <Route path="dashboard" element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="profile" element={
+          <ProtectedRoute>
+            <Profile />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="admin" element={
+          <ProtectedRoute>
+            <Admin />
           </ProtectedRoute>
         } />
         
