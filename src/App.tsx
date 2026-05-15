@@ -18,6 +18,9 @@ import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
 import ForgotPassword from './pages/ForgotPassword'
 import NotFound from './pages/NotFound'
+import Vouchers from './pages/Vouchers'
+import Payments from './pages/Payments'
+import Subscription from './pages/Subscription'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore()
@@ -83,6 +86,24 @@ export default function App() {
         <Route path="session/:id" element={
           <ProtectedRoute>
             <SessionLive />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="subscription" element={
+          <ProtectedRoute>
+            <Subscription />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="vouchers" element={
+          <ProtectedRoute>
+            <Vouchers />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="payments" element={
+          <ProtectedRoute>
+            <Payments />
           </ProtectedRoute>
         } />
         

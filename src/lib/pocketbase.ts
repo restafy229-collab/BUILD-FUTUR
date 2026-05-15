@@ -95,6 +95,48 @@ export interface Response {
   created: string
 }
 
+// Payment type (from payments collection)
+export interface Payment {
+  id: string
+  user: string
+  amount: number
+  currency: string
+  status: 'pending' | 'completed' | 'failed' | 'refunded'
+  method: string
+  provider: string
+  reference: string
+  plan_type: 'pro' | 'school' | 'event'
+  created: string
+  completed?: string
+}
+
+// Subscription type (from subscriptions collection)
+export interface Subscription {
+  id: string
+  user: string
+  plan: 'free' | 'pro' | 'school'
+  status: 'active' | 'cancelled' | 'expired'
+  amount: number
+  billing_cycle: 'monthly' | 'lifetime'
+  start_date: string
+  end_date?: string
+  next_billing?: string
+  created: string
+}
+
+// Voucher type (from vouchers collection)
+export interface Voucher {
+  id: string
+  code: string
+  discount: number
+  type: 'percent' | 'fixed'
+  plan: 'pro' | 'school' | 'event'
+  expires: string
+  used: number
+  max_uses: number
+  created: string
+}
+
 // ===========================================
 // AUTH HELPERS
 // ===========================================
