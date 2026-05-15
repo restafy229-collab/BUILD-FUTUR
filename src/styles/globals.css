@@ -22,6 +22,25 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
 @layer components {
   .btn-primary {
     @apply bg-kif-orange text-white font-semibold px-6 py-3 rounded-lg transition-all;
@@ -43,5 +62,25 @@ body {
   
   .card {
     @apply bg-white border border-gray-100 rounded-xl p-4 shadow-sm;
+  }
+  
+  /* Glass effect */
+  .glass {
+    @apply bg-white/80 backdrop-blur-lg border border-white/50;
+  }
+  
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-kif-orange to-kif-purple;
+  }
+  
+  /* Animations */
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+  
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
   }
 }
