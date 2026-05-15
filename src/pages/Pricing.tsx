@@ -3,57 +3,70 @@ import { Link } from 'react-router-dom'
 
 type Language = 'en' | 'fr'
 
+// GeniusPay API Configuration
+const GENIUS_PAY_API = 'https://pay.genius.ci/api/v1/merchant'
+const GENIUS_PAY_KEY = import.meta.env.VITE_GENIUS_PAY_KEY || ''
+const GENIUS_PAY_SECRET = import.meta.env.VITE_GENIUS_PAY_SECRET || ''
+
+interface Toast {
+  id: string
+  message: string
+  type: 'success' | 'error' | 'info'
+}
+
+// Toast helper
+const showToast = (setToast: (t: Toast | null) => void, message: string, type: Toast['type'] = 'info') => {
+  setToast({ id: Date.now().toString(), message, type })
+  setTimeout(() => setToast(null), 3000)
+}
+
+// Initiate payment via GeniusPay
+const initiatePayment = async (amount: number, description: string, setLoading: (b: boolean) => void, setToast: (t: Toast | null) => void) => {
+  if (!GENIUS_PAY_KEY || !GENIUS_PAY_SECRET) {
+    showToast(setToast, 'GeniusPay not configured. Set VITE_GENIUS_PAY_KEY in .env', 'error')
+    return
+  }
+  
+  setLoading(true)
+  showToast(setToast, 'Connecting to GeniusPay...', 'info')
+  
+  try {
+    const response = await fetch(`${GENIUS_PAY_API}/payments`, {
+      method: 'POST',
+      headers: {
+        'X-API-Key': GENIUS_PAY_KEY,
+        'X-API-Secret': GENIUS_PAY_SECRET,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        amount: amount,
+        currency: 'XOF',
+        description: description,
+      }),
+    })
+    
+    const data = await response.json()
+    
+    if (data.success && (data.data.checkout_url || data.data.payment_url)) {
+      window.location.href = data.data.checkout_url || data.data.payment_url
+    } else {
+      showToast(setToast, data.error?.message || 'Payment failed', 'error')
+    }
+  } catch (e) {
+    console.error(e)
+    showToast(setToast, 'Connection error. Try again.', 'error')
+  } finally {
+    setLoading(false)
+  }
+}
+
 const translations = {
   en: {
     title: 'Simple, Transparent Pricing',
     subtitle: 'Start free, upgrade when you need',
-    plans: 'Plans',
-    monthly: 'Monthly',
-    lifetime: 'Lifetime',
-    features: 'Features',
     getStarted: 'Get Started',
     popular: 'Most Popular',
-    free: {
-      name: 'Free',
-      price: '0',
-      description: 'For teachers & students',
-    },
-    pro: {
-      name: 'Pro',
-      monthlyPrice: '10,000',
-      lifetimePrice: '100,000',
-      description: 'For professionals',
-      features: [
-        '✓ Unlimited quizzes',
-        '✓ Unlimited participants',
-        '✓ Live mode',
-        '✓ Async mode',
-        '✓ Hackathon mode',
-        '✓ Advanced analytics',
-        '✓ Custom branding',
-        '✓ Priority support',
-      ],
-    },
-    school: {
-      name: 'School',
-      monthlyPrice: '25,000',
-      lifetimePrice: '250,000',
-      description: 'For institutions',
-      features: [
-        '✓ Everything in Pro',
-        '✓ User management',
-        '✓ Admin dashboard',
-        '✓ CSV/Excel export',
-        '✓ Team training',
-        '✓ Dedicated support',
-        '✓ Custom domain',
-        '✓ API access',
-      ],
-    },
     events: 'One-time Events',
-    eventHackathon: 'Hackathon Event',
-    eventConference: 'Conference',
-    eventCert: 'Certification',
     faqTitle: 'Frequently Asked Questions',
     canChange: 'Can I change plans anytime?',
     canChangeAns: 'Yes! Upgrade or downgrade anytime. No charge for changes.',
@@ -69,53 +82,9 @@ const translations = {
   fr: {
     title: 'Tarifs Simples et Transparents',
     subtitle: 'Commencez gratuit, passez Pro quand vous voulez',
-    plans: 'Plans',
-    monthly: 'Mensuel',
-    lifetime: 'À vie',
-    features: 'Fonctionnalités',
     getStarted: 'Commencer',
     popular: 'Plus Populaire',
-    free: {
-      name: 'Gratuit',
-      price: '0',
-      description: 'Pour enseignants & élèves',
-    },
-    pro: {
-      name: 'Pro',
-      monthlyPrice: '10 000',
-      lifetimePrice: '100 000',
-      description: 'Pour professionnels',
-      features: [
-        '✓ Quiz illimités',
-        '✓ Participants illimités',
-        '✓ Mode Live',
-        '✓ Mode Async',
-        '✓ Mode Hackathon',
-        '✓ Analyses avancées',
-        '✓ Branding personnalisé',
-        '✓ Support prioritaire',
-      ],
-    },
-    school: {
-      name: 'École',
-      monthlyPrice: '25 000',
-      lifetimePrice: '250 000',
-      description: 'Pour établissements',
-      features: [
-        '✓ Tout Pro',
-        '✓ Gestion utilisateurs',
-        '✓ Dashboard admin',
-        '✓ Export CSV/Excel',
-        '✓ Formation équipe',
-        '✓ Support dédié',
-        '✓ Domaine personnalisé',
-        '✓ Accès API',
-      ],
-    },
     events: 'Événements Ponctuels',
-    eventHackathon: 'Hackathon',
-    eventConference: 'Conférence',
-    eventCert: 'Certification',
     faqTitle: 'Questions Fréquentes',
     canChange: 'Puis-je changer de plan anytime?',
     canChangeAns: 'Oui! Passez à un plan supérieur ou inférieur anytime. Gratuit.',
@@ -132,28 +101,38 @@ const translations = {
 
 export default function Pricing() {
   const [lang, setLang] = useState<Language>('fr')
+  const [loading, setLoading] = useState(false)
+  const [toast, setToast] = useState<Toast | null>(null)
   const t = translations[lang]
   
   const events = [
-    { name: lang === 'fr' ? 'Hackathon' : 'Hackathon', price: '50,000', desc: lang === 'fr' ? 'Team building tech' : 'Team building tech', features: lang === 'fr' ? ['Jusqu\'à 100 participants', 'Classement en direct', 'Rapport détaillé'] : ['Up to 100 participants', 'Live leaderboard', 'Detailed report'] },
-    { name: lang === 'fr' ? 'Conférence' : 'Conference', price: '75,000', desc: lang === 'fr' ? 'Session interactive' : 'Interactive session', features: lang === 'fr' ? ['Jusqu\'à 500 participants', 'Q&R en direct', 'Export résultats'] : ['Up to 500 participants', 'Live Q&A', 'Export results'] },
-    { name: lang === 'fr' ? 'Certification' : 'Certification', price: '100,000', desc: lang === 'fr' ? 'Évaluation finale' : 'Final evaluation', features: lang === 'fr' ? ['Jusqu\'à 1000 participants', 'Certificats auto', 'Rapport complet'] : ['Up to 1000 participants', 'Auto certificates', 'Complete report'] },
+    { name: lang === 'fr' ? 'Hackathon' : 'Hackathon', price: 50000, desc: lang === 'fr' ? 'Team building tech' : 'Team building tech', features: lang === 'fr' ? ['Jusqu\'à 100 participants', 'Classement en direct', 'Rapport détaillé'] : ['Up to 100 participants', 'Live leaderboard', 'Detailed report'] },
+    { name: lang === 'fr' ? 'Conférence' : 'Conference', price: 75000, desc: lang === 'fr' ? 'Session interactive' : 'Interactive session', features: lang === 'fr' ? ['Jusqu\'à 500 participants', 'Q&R en direct', 'Export résultats'] : ['Up to 500 participants', 'Live Q&A', 'Export results'] },
+    { name: lang === 'fr' ? 'Certification' : 'Certification', price: 100000, desc: lang === 'fr' ? 'Évaluation finale' : 'Final evaluation', features: lang === 'fr' ? ['Jusqu\'à 1000 participants', 'Certificats auto', 'Rapport complet'] : ['Up to 1000 participants', 'Auto certificates', 'Complete report'] },
   ]
+
+  const handleEventPay = (amount: number, name: string) => {
+    initiatePayment(amount, `KifLearn Event: ${name}`, setLoading, setToast)
+  }
 
   return (
     <div className="min-h-screen">
+      {/* Toast */}
+      {toast && (
+        <div className={`fixed top-24 right-4 px-4 py-2 rounded-lg shadow-lg z-50 ${
+          toast.type === 'success' ? 'bg-green-500' :
+          toast.type === 'error' ? 'bg-red-500' : 'bg-gray-800'
+        } text-white`}>
+          {toast.message}
+        </div>
+      )}
+
       {/* Language Toggle */}
       <div className="fixed top-20 right-4 z-50 bg-white rounded-lg shadow-lg p-1">
-        <button 
-          onClick={() => setLang('fr')} 
-          className={`px-3 py-1 rounded-md text-sm ${lang === 'fr' ? 'bg-kif-orange text-white' : 'text-gray-600'}`}
-        >
+        <button onClick={() => setLang('fr')} className={`px-3 py-1 rounded-md text-sm ${lang === 'fr' ? 'bg-kif-orange text-white' : 'text-gray-600'}`}>
           🇫🇷 FR
         </button>
-        <button 
-          onClick={() => setLang('en')} 
-          className={`px-3 py-1 rounded-md text-sm ${lang === 'en' ? 'bg-kif-orange text-white' : 'text-gray-600'}`}
-        >
+        <button onClick={() => setLang('en')} className={`px-3 py-1 rounded-md text-sm ${lang === 'en' ? 'bg-kif-orange text-white' : 'text-gray-600'}`}>
           🇬🇧 EN
         </button>
       </div>
@@ -161,24 +140,20 @@ export default function Pricing() {
       {/* Header */}
       <section className="py-20 bg-gradient-to-br from-gray-900 to-gray-800">
         <div className="max-w-6xl mx-auto px-4 text-center">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            {t.title}
-          </h1>
-          <p className="text-xl text-gray-300 mb-8">
-            {t.subtitle}
-          </p>
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">{t.title}</h1>
+          <p className="text-xl text-gray-300 mb-8">{t.subtitle}</p>
         </div>
       </section>
 
-      {/* Monthly & Lifetime */}
+      {/* Plans */}
       <section className="py-20 bg-white">
         <div className="max-w-6xl mx-auto px-4">
           <div className="grid md:grid-cols-3 gap-6">
             {/* Free */}
             <div className="bg-gray-50 border-2 border-gray-200 rounded-2xl p-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-1">{t.free.name}</h3>
-              <div className="text-4xl font-bold text-gray-900 mb-2">{t.free.price}</div>
-              <p className="text-gray-500 text-sm mb-6">{t.free.description}</p>
+              <h3 className="text-xl font-bold text-gray-900 mb-1">Gratuit</h3>
+              <div className="text-4xl font-bold text-gray-900 mb-2">0</div>
+              <p className="text-gray-500 text-sm mb-6">Pour enseignants & élèves</p>
               <ul className="space-y-2 mb-6">
                 <li className="text-sm text-gray-600">✓ Quiz illimités</li>
                 <li className="text-sm text-gray-600">✓ Participants jusqu'à 50</li>
@@ -195,25 +170,22 @@ export default function Pricing() {
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-kif-orange text-white text-sm font-medium rounded-full">
                 {t.popular}
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-1">{t.pro.name}</h3>
-              
-              {/* Monthly */}
+              <h3 className="text-xl font-bold text-gray-900 mb-1">Pro</h3>
               <div className="mb-4">
-                <span className="text-3xl font-bold text-gray-900">{t.pro.monthlyPrice}</span>
+                <span className="text-3xl font-bold text-gray-900">10 000</span>
                 <span className="text-gray-500">/{lang === 'fr' ? 'mois' : 'month'}</span>
               </div>
-              
-              {/* Lifetime */}
               <div className="mb-2">
-                <span className="text-sm text-gray-500">{t.lifetime}: </span>
-                <span className="text-xl font-bold text-kif-orange">{t.pro.lifetimePrice}</span>
+                <span className="text-sm text-gray-500">{lang === 'fr' ? 'À vie' : 'Lifetime'}: </span>
+                <span className="text-xl font-bold text-kif-orange">100 000</span>
               </div>
-              
-              <p className="text-gray-500 text-sm mb-4">{t.pro.description}</p>
+              <p className="text-gray-500 text-sm mb-4">Pour professionnels</p>
               <ul className="space-y-2 mb-6">
-                {t.pro.features.map((f, i) => (
-                  <li key={i} className="text-sm text-gray-600">{f}</li>
-                ))}
+                <li className="text-sm text-gray-600">✓ Quiz illimités</li>
+                <li className="text-sm text-gray-600">✓ Participants illimités</li>
+                <li className="text-sm text-gray-600">✓ Mode Live + Async + Hackathon</li>
+                <li className="text-sm text-gray-600">✓ Analytics avancés</li>
+                <li className="text-sm text-gray-600">✓ Support prioritaire</li>
               </ul>
               <Link to="/register" className="block w-full py-3 bg-kif-orange text-white font-medium text-center rounded-xl hover:bg-orange-600">
                 {t.getStarted}
@@ -222,25 +194,22 @@ export default function Pricing() {
 
             {/* School */}
             <div className="bg-gray-50 border-2 border-gray-200 rounded-2xl p-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-1">{t.school.name}</h3>
-              
-              {/* Monthly */}
+              <h3 className="text-xl font-bold text-gray-900 mb-1">École</h3>
               <div className="mb-4">
-                <span className="text-3xl font-bold text-gray-900">{t.school.monthlyPrice}</span>
+                <span className="text-3xl font-bold text-gray-900">25 000</span>
                 <span className="text-gray-500">/{lang === 'fr' ? 'mois' : 'month'}</span>
               </div>
-              
-              {/* Lifetime */}
               <div className="mb-2">
-                <span className="text-sm text-gray-500">{t.lifetime}: </span>
-                <span className="text-xl font-bold text-kif-blue">{t.school.lifetimePrice}</span>
+                <span className="text-sm text-gray-500">{lang === 'fr' ? 'À vie' : 'Lifetime'}: </span>
+                <span className="text-xl font-bold text-kif-blue">250 000</span>
               </div>
-              
-              <p className="text-gray-500 text-sm mb-4">{t.school.description}</p>
+              <p className="text-gray-500 text-sm mb-4">Pour établissements</p>
               <ul className="space-y-2 mb-6">
-                {t.school.features.map((f, i) => (
-                  <li key={i} className="text-sm text-gray-600">{f}</li>
-                ))}
+                <li className="text-sm text-gray-600">✓ Tout Pro</li>
+                <li className="text-sm text-gray-600">✓ Gestion utilisateurs</li>
+                <li className="text-sm text-gray-600">✓ Dashboard admin</li>
+                <li className="text-sm text-gray-600">✓ Export CSV/Excel</li>
+                <li className="text-sm text-gray-600">✓ Support dédié</li>
               </ul>
               <Link to="/register" className="block w-full py-3 bg-kif-blue text-white font-medium text-center rounded-xl hover:bg-blue-600">
                 {t.getStarted}
@@ -250,13 +219,13 @@ export default function Pricing() {
         </div>
       </section>
 
-      {/* Events */}
+      {/* Events with GeniusPay */}
       <section className="py-20 bg-gray-50">
         <div className="max-w-6xl mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">{t.events}</h2>
             <p className="text-gray-600">
-              {lang === 'fr' ? ' Paiement unique via Genius Pay' : 'One-time payment via Genius Pay'}
+              {lang === 'fr' ? 'Paiement unique via Genius Pay' : 'One-time payment via Genius Pay'}
             </p>
           </div>
 
@@ -264,15 +233,19 @@ export default function Pricing() {
             {events.map((event, i) => (
               <div key={i} className="bg-white border-2 border-gray-200 rounded-2xl p-6">
                 <h3 className="text-xl font-bold text-gray-900 mb-1">{event.name}</h3>
-                <div className="text-3xl font-bold text-kif-orange mb-2">{event.price} <span className="text-sm font-normal">FCFA</span></div>
+                <div className="text-3xl font-bold text-kif-orange mb-2">{event.price.toLocaleString()} <span className="text-sm font-normal">FCFA</span></div>
                 <p className="text-gray-500 text-sm mb-4">{event.desc}</p>
                 <ul className="space-y-2 mb-6">
                   {event.features.map((f, j) => (
                     <li key={j} className="text-sm text-gray-600">✓ {f}</li>
                   ))}
                 </ul>
-                <button className="w-full btn-primary">
-                  ✨ {lang === 'fr' ? 'Payer avec Genius Pay' : 'Pay with Genius Pay'}
+                <button 
+                  onClick={() => handleEventPay(event.price, event.name)}
+                  disabled={loading}
+                  className="w-full btn-primary disabled:opacity-50"
+                >
+                  {loading ? '...' : `✨ ${lang === 'fr' ? 'Payer avec Genius Pay' : 'Pay with Genius Pay'}`}
                 </button>
                 <p className="text-xs text-gray-400 mt-3 text-center">
                   🔒 {lang === 'fr' ? 'Paiement sécurisé' : 'Secure payment'}
@@ -290,11 +263,7 @@ export default function Pricing() {
                 : 'Accept mobile payments (Moov, Wave, Orange Money). Commission: only 2.5%.'
               }
             </p>
-            <a 
-              href="https://genius-pay.com" 
-              target="_blank"
-              className="inline-block bg-white text-blue-600 font-semibold px-6 py-3 rounded-xl hover:bg-gray-100"
-            >
+            <a href="https://genius-pay.com" target="_blank" className="inline-block bg-white text-blue-600 font-semibold px-6 py-3 rounded-xl hover:bg-gray-100">
               {lang === 'fr' ? 'Créer un compte' : 'Create account'}
             </a>
           </div>
@@ -331,10 +300,7 @@ export default function Pricing() {
         <div className="max-w-4xl mx-auto px-4 text-center text-white">
           <h2 className="text-3xl font-bold mb-4">{t.ctaTitle}</h2>
           <p className="text-lg mb-8 opacity-90">{t.ctaSubtitle}</p>
-          <Link 
-            to="/register" 
-            className="inline-block bg-white text-kif-orange font-semibold px-8 py-4 rounded-xl hover:bg-gray-100"
-          >
+          <Link to="/register" className="inline-block bg-white text-kif-orange font-semibold px-8 py-4 rounded-xl hover:bg-gray-100">
             {t.getStarted}
           </Link>
         </div>
