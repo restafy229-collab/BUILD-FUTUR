@@ -11,6 +11,13 @@ import SessionLive from './pages/SessionLive'
 import JoinSession from './pages/JoinSession'
 import Profile from './pages/Profile'
 import Admin from './pages/Admin'
+import Settings from './pages/Settings'
+import History from './pages/History'
+import Pricing from './pages/Pricing'
+import Terms from './pages/Terms'
+import Privacy from './pages/Privacy'
+import ForgotPassword from './pages/ForgotPassword'
+import NotFound from './pages/NotFound'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore()
@@ -24,8 +31,12 @@ export default function App() {
         <Route index element={<Landing />} />
         <Route path="login" element={<Login />} />
         <Route path="register" element={<Register />} />
+        <Route path="forgot-password" element={<ForgotPassword />} />
         <Route path="join" element={<JoinSession />} />
         <Route path="play/:id" element={<QuizPlay />} />
+        <Route path="pricing" element={<Pricing />} />
+        <Route path="terms" element={<Terms />} />
+        <Route path="privacy" element={<Privacy />} />
         
         <Route path="dashboard" element={
           <ProtectedRoute>
@@ -36,6 +47,18 @@ export default function App() {
         <Route path="profile" element={
           <ProtectedRoute>
             <Profile />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="settings" element={
+          <ProtectedRoute>
+            <Settings />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="history" element={
+          <ProtectedRoute>
+            <History />
           </ProtectedRoute>
         } />
         
@@ -62,6 +85,8 @@ export default function App() {
             <SessionLive />
           </ProtectedRoute>
         } />
+        
+        <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
   )

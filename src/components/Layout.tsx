@@ -40,6 +40,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <Link to="/" className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-50 transition-colors">
               Accueil
             </Link>
+            <Link to="/pricing" className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-50 transition-colors">
+              Tarifs
+            </Link>
             {isAuthenticated && (
               <>
                 <Link to="/dashboard" className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-50 transition-colors">
@@ -100,6 +103,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 className="px-4 py-2 text-sm font-medium text-gray-600"
               >
                 Accueil
+              </Link>
+              <Link 
+                to="/pricing" 
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-600"
+              >
+                Tarifs
               </Link>
               <Link 
                 to="/join" 
